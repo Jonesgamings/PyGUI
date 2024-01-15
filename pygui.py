@@ -24,13 +24,7 @@ class Element:
         self.window.add_element(self)
 
     def check_event(self, event):
-        mousex, mousey = pygame.mouse.get_pos()
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.hitbox.collidepoint(mousex, mousey):
-                self.selected = True
-
-            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                self.selected = False
+        pass
 
     def draw(self, screen):
         pass
@@ -95,10 +89,173 @@ class Button(Label):
     
 class Entry(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, default_text = None, text_size = 0, text_colour = (255, 255, 255), ) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, False)
+    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(200, 200, 200), default_text = None, text_size = 32, text_colour = (0, 0, 0), bold = False, italic = False, font = None, hidden = None, lines = 1, input_character = "|") -> None:
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, False)
+        self.default_text = default_text
+        self.text_size = text_size
+        self.text_colour = text_colour
+        self.bold = bold
+        self.italic = italic
+        self.font = font
+        self.hidden = hidden
+        self.lines = lines
+        self.input_character = input_character
+
+        self.default_text_colour = (200, 200, 200)
+
+        self.text = ["" for _ in range(self.lines)]
+        self.raw_text = ""
+        self.current_line = 0
+        self.current_pos = 0
+
+        self.pygame_font = pygame.font.SysFont(self.font, self.text_size, self.bold, self.italic)
+        self.text_height = self.pygame_font.size(self.text[0])[1]
+
+    def get(self, line=None):
+        if line:
+            return self.text[line]
+        
+        else:
+            return "\n".join(self.text)
+        
+    def add_char_line(self, key):
+        if key in []: return
+        if self.pygame_font.size(self.text[self.current_line] + key + self.input_character)[0] > self.width:
+            self.current_line += 1
+            self.current_pos = len(self.text[self.current_line])
+            if self.current_line == self.lines: 
+                self.current_line = self.lines - 1
+                self.current_pos = len(self.text[self.current_line])
+
+            else:
+                self.add_char_line(key)
+
+        else:
+            self.text[self.current_line] = self.text[self.current_line][:self.current_pos] + key + self.text[self.current_line][self.current_pos:]
+            self.raw_text = self.raw_text[:self.current_pos] + key + self.raw_text[self.current_pos:]
+            self.current_pos += 1
+
+    def check_event(self, event):
+        mousex, mousey = pygame.mouse.get_pos()
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.hitbox.collidepoint(mousex, mousey):
+                self.selected = not self.selected
+
+            else:
+                self.selected = False
+            
+        if self.selected:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    self.current_line += 1
+                    if self.current_line == self.lines: 
+                        self.current_line = self.lines - 1
+                        
+                    else:
+                        self.current_pos = len(self.text[self.current_line])
+
+                elif event.key == pygame.K_BACKSPACE:
+                    if self.current_pos == 0:
+                        self.current_line -= 1
+                        if self.current_line < 0: 
+                            self.current_line = 0
+
+                        else:
+                            self.current_pos = len(self.text[self.current_line])
+
+                    else:
+                        if self.current_pos > 0:
+                            self.text[self.current_line] = self.text[self.current_line][:self.current_pos - 1] + self.text[self.current_line][self.current_pos:]
+                            self.raw_text = self.raw_text[:self.current_pos - 1] + self.raw_text[self.current_pos:]
+                            self.current_pos -= 1
+
+                elif event.key == pygame.K_UP:
+                    self.current_line -= 1
+                    self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
+                    if self.current_line < 0: 
+                        self.current_line = 0
+                        self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
+
+                elif event.key == pygame.K_DOWN:
+                    self.current_line += 1
+                    self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
+                    if self.current_line == self.lines: 
+                        self.current_line = self.lines - 1
+                        self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
+
+                elif event.key == pygame.K_RIGHT:
+                    self.current_pos += 1
+                    if self.current_pos > len(self.text[self.current_line]):
+                        self.current_line += 1
+                        if self.current_line == self.lines:
+                            self.current_line = self.lines - 1
+                            self.current_pos -= 1
+
+                        else: 
+                            self.current_pos = 0
+
+                elif event.key == pygame.K_LEFT:
+                    self.current_pos -= 1
+                    if self.current_pos < 0:
+                        self.current_line -= 1
+                        if self.current_line < 0:
+                            self.current_line = 0
+                            self.current_pos += 1
+                        else: 
+                            self.current_pos = len(self.text[self.current_line])
+
+                else:
+                    key = event.unicode
+                    self.add_char_line(key)
+
+    def draw_text(self, screen):
+        if len(self.raw_text) == 0 and self.default_text and not self.selected:
+            screen.blit(self.pygame_font.render(self.default_text, True, self.default_text_colour), (self.hitbox.left + 5, self.hitbox.top + 5))
+
+        else:
+            for line, text in enumerate(self.text):
+
+                if self.current_line == line and self.selected:
+                    text = text[:self.current_pos] + self.input_character + text[self.current_pos:]
+
+                if self.hidden: text = "".join(self.hidden for _ in range(len(text)))
+                if self.selected:
+                    screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5, self.hitbox.top + 5 + self.text_height * line))
+
+                else:
+                    screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5, self.hitbox.top + 5 + self.text_height * line))
+
+    def draw(self, screen):
+        pygame.draw.rect(screen, self.colour, self.hitbox)
+        pygame.draw.rect(screen, self.border_colour, self.hitbox, self.border_size)
+        self.draw_text(screen)
 
 class SelectionBox(Element):
+
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+
+class ProgressBar(Element):
+
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+
+class Scale(Element):
+
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+
+class ScrollBar(Element):
+
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+
+class Frame(Element):
+
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+
+class DropDown(Element):
 
     def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
         super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
@@ -157,10 +314,11 @@ class Window:
         pygame.quit()
 
 if __name__ == "__main__":
-    def test(a, b):
-        print(a, b)
+    def test(e):
+        print(e.get())
 
     window = Window(fullscreen=True)
     l = Label(window, (200, 200), (200, 45), "HI\n121134134", 32)
-    b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_kargs={"a":"2", "b":"1"})
+    e = Entry(window, (800, 800), (1000, 50), lines=2, default_text= "TESTING!")
+    b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[e])
     window.mainloop()
