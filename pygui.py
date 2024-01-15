@@ -5,7 +5,7 @@ pygame.font.init()
 
 class Element:
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
         self.window = window
         self.x, self.y = position
         self.width, self.height = dimensions
@@ -18,7 +18,6 @@ class Element:
         self.border_size = border_size
         self.border_colour = border_colour
 
-        self.draggable = draggable
         self.selected = False
 
         self.window.add_element(self)
@@ -28,11 +27,11 @@ class Element:
 
     def draw(self, screen):
         pass
-
+    
 class Label(Element):
 
     def __init__(self, window, position, dimensions, text = None, text_size = 0, text_colour = (0, 0, 0), bold = False, italic = None, font = None, colour = (250, 250, 250), border_colour = (200, 200, 200), border_size = 2) -> None:
-        super().__init__(window, position, dimensions, colour, colour, border_size, border_colour, False)
+        super().__init__(window, position, dimensions, colour, colour, border_size, border_colour)
         self.text = text
         self.text_size = text_size
         self.text_colour = text_colour
@@ -90,7 +89,7 @@ class Button(Label):
 class Entry(Element):
 
     def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(200, 200, 200), default_text = None, text_size = 32, text_colour = (0, 0, 0), bold = False, italic = False, font = None, hidden = None, lines = 1, input_character = "|") -> None:
-        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, False)
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
         self.default_text = default_text
         self.text_size = text_size
         self.text_colour = text_colour
@@ -171,17 +170,17 @@ class Entry(Element):
 
                 elif event.key == pygame.K_UP:
                     self.current_line -= 1
-                    self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
                     if self.current_line < 0: 
                         self.current_line = 0
-                        self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
+                    
+                    self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
 
                 elif event.key == pygame.K_DOWN:
                     self.current_line += 1
-                    self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
                     if self.current_line == self.lines: 
                         self.current_line = self.lines - 1
-                        self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
+
+                    self.current_pos = len(self.text[self.current_line]) if self.current_pos > len(self.text[self.current_line]) else self.current_pos
 
                 elif event.key == pygame.K_RIGHT:
                     self.current_pos += 1
@@ -219,11 +218,8 @@ class Entry(Element):
                     text = text[:self.current_pos] + self.input_character + text[self.current_pos:]
 
                 if self.hidden: text = "".join(self.hidden for _ in range(len(text)))
-                if self.selected:
-                    screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5, self.hitbox.top + 5 + self.text_height * line))
+                screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5, self.hitbox.top + 5 + self.text_height * line))
 
-                else:
-                    screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5, self.hitbox.top + 5 + self.text_height * line))
 
     def draw(self, screen):
         pygame.draw.rect(screen, self.colour, self.hitbox)
@@ -232,33 +228,33 @@ class Entry(Element):
 
 class SelectionBox(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
 
 class ProgressBar(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
 
 class Scale(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
 
 class ScrollBar(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
 
 class Frame(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
 
 class DropDown(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, draggable) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, draggable)
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
 
 class Window:
 
