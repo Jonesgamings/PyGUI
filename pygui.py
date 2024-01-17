@@ -243,8 +243,21 @@ class Scale(Element):
 
 class ScrollBar(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
+    def __init__(self, window, position, dimensions, colour, border_size, border_colour, scroll_height, scroll_colour, scroll_border_size, scroll_border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
+        self.scroll_height = scroll_height
+        self.scroll_colour = scroll_colour
+        self.scroll_border_size = scroll_border_size
+        self.scroll_border_colour = scroll_border_colour
+
+        self.scroll_x = 0
+        self.scroll_y = 0
+
+    def draw(self, screen):
+        return super().draw(screen)
+    
+    def check_event(self, event):
+        return super().check_event(event)
 
 class Frame(Element):
 
