@@ -233,25 +233,65 @@ class SelectionBox(Element):
 
 class ProgressBar(Element):
 
-    def __init__(self, window, position, dimensions, colour, border_size, border_colour, max_value, min_value = 0, bar_colour = (0, 255, 0), interactable = False) -> None:
+    def __init__(self, window, position, dimensions, max_value, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), min_value = 0, bar_colour = (0, 255, 0), interactable = False, vertical = False, reversed_dir = False) -> None:
         super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
         self.min_value = min_value
         self.max_value = max_value
         self.current_value = min_value
         self.bar_colour = bar_colour
         self.interactable = interactable
+        self.vertical = vertical
+        self.reversed_dir = reversed_dir
+        if self.vertical: self.bar_rect = pygame.Rect(self.x + self.border_size, self.y + self.border_size, self.width - 2*self.border_size, 0)
+        else: self.bar_rect = pygame.Rect(self.x + self.border_size, self.y + self.border_size, 0, self.height - 2*self.border_size)
 
     def set_value(self, value):
+        if value < self.min_value: value = self.min_value
+        if value > self.max_value: value = self.max_value
         self.current_value = value
 
     def set_percentage(self, percentage):
+        if percentage < 0: percentage = 0
+        if percentage > 1: percentage = 1
         self.current_value = ((self.max_value - self.min_value) * percentage) + self.min_value
 
+    def get_percentage(self):
+        return (self.current_value - self.min_value) / (self.max_value - self.min_value)
+
+    def get(self):
+        return (self.current_value, self.get_percentage())
+
     def check_event(self, event):
-        return super().check_event(event)
+        if self.interactable:
+            mousex, mousey = pygame.mouse.get_pos()
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.hitbox.collidepoint(mousex, mousey):
+                    self.selected = True
+
+            if event.type == pygame.MOUSEBUTTONUP and self.selected:
+                self.selected = False
+
+            if self.selected:
+                if self.vertical:
+                    if self.reversed_dir: self.set_percentage(1-(mousey - self.x) / self.height)
+                    else: self.set_percentage((mousey - self.x) / self.height)
+
+                else:
+                    if self.reversed_dir: self.set_percentage(1-(mousex - self.x) / self.width)
+                    else: self.set_percentage((mousex - self.x) / self.width)
+
+        if self.vertical:
+            self.bar_rect.height = ((self.current_value - self.min_value) / (self.max_value - self.min_value)) * (self.height - 2*self.border_size)
+            if self.reversed_dir: self.bar_rect.y = self.height - self.bar_rect.height + self.y - self.border_size
+
+        else: 
+            self.bar_rect.width = ((self.current_value - self.min_value) / (self.max_value - self.min_value)) * (self.width - 2*self.border_size)
+            if self.reversed_dir: self.bar_rect.x = self.width - self.bar_rect.width + self.x - self.border_size
     
     def draw(self, screen):
-        return super().draw(screen)
+        pygame.draw.rect(screen, self.colour, self.hitbox)
+        pygame.draw.rect(screen, self.border_colour, self.hitbox, self.border_size)
+        pygame.draw.rect(screen, self.bar_colour, self.bar_rect)
 
 class ScrollBar(Element):
 
@@ -273,7 +313,6 @@ class ScrollBar(Element):
         self.clamp_right = self.width - self.scroll_width
 
         self.scroll_rect = pygame.Rect(self.x, self.y, self.scroll_width, self.scroll_height)
-        self.pressed = False
 
     def draw(self, screen):
         pygame.draw.rect(screen, self.colour, self.hitbox)
@@ -294,12 +333,12 @@ class ScrollBar(Element):
         mousex, mousey = pygame.mouse.get_pos()
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.scroll_rect.collidepoint(mousex, mousey):
-            self.pressed = True
+            self.selected = True
             
-        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.pressed:
-            self.pressed = False 
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.selected:
+            self.selected = False
 
-        if self.pressed:
+        if self.selected:
             self.scroll_y = mousey - self.scroll_height / 2
             self.scroll_x = mousex - self.scroll_width / 2
             if self.scroll_y >= self.clamp_bottom:
@@ -386,7 +425,8 @@ def main():
 
     window = Window(fullscreen=True)
     s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=50, scroll_width=50)
-    b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[s])
+    p = ProgressBar(window, (500, 500), (300, 50), 100, interactable=True)
+    b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[p])
     window.mainloop()
 
 if __name__ == "__main__":
