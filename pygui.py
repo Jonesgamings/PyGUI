@@ -233,13 +233,25 @@ class SelectionBox(Element):
 
 class ProgressBar(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
+    def __init__(self, window, position, dimensions, colour, border_size, border_colour, max_value, min_value = 0, bar_colour = (0, 255, 0), interactable = False) -> None:
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
+        self.min_value = min_value
+        self.max_value = max_value
+        self.current_value = min_value
+        self.bar_colour = bar_colour
+        self.interactable = interactable
 
-class Scale(Element):
+    def set_value(self, value):
+        self.current_value = value
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
+    def set_percentage(self, percentage):
+        self.current_value = ((self.max_value - self.min_value) * percentage) + self.min_value
+
+    def check_event(self, event):
+        return super().check_event(event)
+    
+    def draw(self, screen):
+        return super().draw(screen)
 
 class ScrollBar(Element):
 
@@ -280,28 +292,30 @@ class ScrollBar(Element):
     
     def check_event(self, event):
         mousex, mousey = pygame.mouse.get_pos()
-        if pygame.mouse.get_pressed()[0]:
-            if self.scroll_rect.collidepoint(mousex, mousey) or self.pressed:
-                self.pressed = True
-                self.scroll_y = mousey - self.scroll_height / 2
-                self.scroll_x = mousex - self.scroll_width / 2
-                if self.scroll_y >= self.clamp_bottom:
-                    self.scroll_y = self.clamp_bottom
 
-                elif self.scroll_y <= self.clamp_top:
-                    self.scroll_y = self.clamp_top
-
-                if self.scroll_x >= self.clamp_right:
-                    self.scroll_x = self.clamp_right
-
-                elif self.scroll_x <= self.clamp_left:
-                    self.scroll_x = self.clamp_left
-
-                self.scroll_rect.y = self.scroll_y
-                self.scroll_rect.x = self.scroll_x
-
-        if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.pressed:
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.scroll_rect.collidepoint(mousex, mousey):
+            self.pressed = True
+            
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.pressed:
             self.pressed = False 
+
+        if self.pressed:
+            self.scroll_y = mousey - self.scroll_height / 2
+            self.scroll_x = mousex - self.scroll_width / 2
+            if self.scroll_y >= self.clamp_bottom:
+                self.scroll_y = self.clamp_bottom
+
+            elif self.scroll_y <= self.clamp_top:
+                self.scroll_y = self.clamp_top
+
+            if self.scroll_x >= self.clamp_right:
+                self.scroll_x = self.clamp_right
+
+            elif self.scroll_x <= self.clamp_left:
+                self.scroll_x = self.clamp_left
+
+            self.scroll_rect.y = self.scroll_y
+            self.scroll_rect.x = self.scroll_x
 
 class Frame(Element):
 
