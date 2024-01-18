@@ -243,9 +243,10 @@ class Scale(Element):
 
 class ScrollBar(Element):
 
-    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(200, 200, 200), scroll_height = 20, scroll_colour = (100, 100, 100), scroll_border_size = 1, scroll_border_colour = (50, 50, 50)) -> None:
+    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(200, 200, 200), scroll_height = 50, scroll_width = 20, scroll_colour = (100, 100, 100), scroll_border_size = 1, scroll_border_colour = (50, 50, 50)) -> None:
         super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
         self.scroll_height = scroll_height
+        self.scroll_width = scroll_width
         self.scroll_colour = scroll_colour
         self.scroll_border_size = scroll_border_size
         self.scroll_border_colour = scroll_border_colour
@@ -255,7 +256,11 @@ class ScrollBar(Element):
 
         self.clamp_top = self.y
         self.clamp_bottom = self.height - self.scroll_height
-        self.scroll_rect = pygame.Rect(self.x, self.y, self.width, self.scroll_height)
+
+        self.clamp_left = self.x
+        self.clamp_right = self.width - self.scroll_width
+
+        self.scroll_rect = pygame.Rect(self.x, self.y, self.scroll_width, self.scroll_height)
         self.pressed = False
 
     def draw(self, screen):
@@ -264,8 +269,14 @@ class ScrollBar(Element):
         pygame.draw.rect(screen, self.scroll_colour, self.scroll_rect)
         pygame.draw.rect(screen, self.scroll_border_colour, self.scroll_rect, self.scroll_border_size)
 
+    def get_y(self):
+        return ((self.scroll_y - self.clamp_top) / (self.clamp_bottom - self.clamp_top)) if (self.clamp_bottom - self.clamp_top) > 0 else 0
+    
+    def get_x(self):
+        return ((self.scroll_x - self.clamp_left) / (self.clamp_right - self.clamp_left)) if (self.clamp_right - self.clamp_left) > 0 else 0
+    
     def get(self):
-        return (self.scroll_y - self.clamp_top) / (self.clamp_bottom - self.clamp_top)
+        return (self.get_x(), self.get_y())
     
     def check_event(self, event):
         mousex, mousey = pygame.mouse.get_pos()
@@ -273,13 +284,21 @@ class ScrollBar(Element):
             if self.scroll_rect.collidepoint(mousex, mousey) or self.pressed:
                 self.pressed = True
                 self.scroll_y = mousey - self.scroll_height / 2
+                self.scroll_x = mousex - self.scroll_width / 2
                 if self.scroll_y >= self.clamp_bottom:
                     self.scroll_y = self.clamp_bottom
 
                 elif self.scroll_y <= self.clamp_top:
                     self.scroll_y = self.clamp_top
 
+                if self.scroll_x >= self.clamp_right:
+                    self.scroll_x = self.clamp_right
+
+                elif self.scroll_x <= self.clamp_left:
+                    self.scroll_x = self.clamp_left
+
                 self.scroll_rect.y = self.scroll_y
+                self.scroll_rect.x = self.scroll_x
 
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.pressed:
             self.pressed = False 
@@ -352,9 +371,7 @@ def main():
         print(e.get())
 
     window = Window(fullscreen=True)
-    l = Label(window, (200, 200), (200, 45), "HI\n121134134", 32)
-    e = Entry(window, (800, 800), (1000, 50), lines=2, default_text= "TESTING!")
-    s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=100)
+    s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=50, scroll_width=50)
     b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[s])
     window.mainloop()
 
