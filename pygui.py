@@ -260,17 +260,6 @@ class Entry(Element):
         pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
         self.draw_text(screen)
 
-class SelectionBox(Element):
-
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
-
-    def check_event(self, event):
-        if not self.visible: return
-
-    def draw(self, screen):
-        if not self.visible: return
-
 class ProgressBar(Element):
 
     def __init__(self, window, position, dimensions, max_value, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), min_value = 0, starting_value = None, bar_colour = (0, 255, 0), interactable = False, vertical = False, reversed_dir = False) -> None:
@@ -346,7 +335,7 @@ class ProgressBar(Element):
 
 class ScrollBar(Element):
 
-    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), scroll_height = 50, scroll_width = 20, scroll_colour = (100, 100, 100), scroll_border_size = 1, scroll_border_colour = (50, 50, 50)) -> None:
+    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), scroll_height = 50, scroll_width = 20, scroll_colour = (100, 100, 100), scroll_border_size = 1, scroll_border_colour = (50, 50, 50), scrollable = True, scroll_speed = 0.01, scrollable_window = False) -> None:
         super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
         self.scroll_height = scroll_height
         self.scroll_width = scroll_width
@@ -364,6 +353,9 @@ class ScrollBar(Element):
         self.clamp_right = self.width - self.scroll_width
 
         self.scroll_rect = pygame.Rect(self.x, self.y, self.scroll_width, self.scroll_height)
+        self.scrollable = scrollable
+        self.scrollable_window = scrollable_window
+        self.scroll_speed = scroll_speed
 
     def draw(self, screen):
         if not self.visible: return
@@ -384,6 +376,19 @@ class ScrollBar(Element):
     def get(self):
         return (self.get_x(), self.get_y())
     
+    def check_scroll(self):
+        if self.scroll_y >= self.clamp_bottom:
+            self.scroll_y = self.clamp_bottom
+
+        elif self.scroll_y <= self.clamp_top:
+            self.scroll_y = self.clamp_top
+
+        if self.scroll_x >= self.clamp_right:
+            self.scroll_x = self.clamp_right
+
+        elif self.scroll_x <= self.clamp_left:
+            self.scroll_x = self.clamp_left
+    
     def check_event(self, event):
         if not self.visible: return
         mousex, mousey = pygame.mouse.get_pos()
@@ -396,20 +401,21 @@ class ScrollBar(Element):
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.selected:
             self.selected = False
 
+        if self.scrollable:
+            if event.type == pygame.MOUSEWHEEL and (self.hitbox.collidepoint(mousex, mousey) or self.scrollable_window):
+                self.scroll_y -= self.scroll_speed * (self.clamp_bottom - self.clamp_top) * event.y
+                self.scroll_x += self.scroll_speed * (self.clamp_right - self.clamp_left) * event.y
+                
+                self.check_scroll()
+
+                self.scroll_rect.y = self.scroll_y
+                self.scroll_rect.x = self.scroll_x
+
         if self.selected:
             self.scroll_y = mousey - self.scroll_height / 2
             self.scroll_x = mousex - self.scroll_width / 2
-            if self.scroll_y >= self.clamp_bottom:
-                self.scroll_y = self.clamp_bottom
 
-            elif self.scroll_y <= self.clamp_top:
-                self.scroll_y = self.clamp_top
-
-            if self.scroll_x >= self.clamp_right:
-                self.scroll_x = self.clamp_right
-
-            elif self.scroll_x <= self.clamp_left:
-                self.scroll_x = self.clamp_left
+            self.check_scroll()
 
             self.scroll_rect.y = self.scroll_y
             self.scroll_rect.x = self.scroll_x
@@ -477,6 +483,17 @@ class Frame(Element):
                 element.draw(screen)
 
 class DropDown(Element):
+
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
+
+    def check_event(self, event):
+        if not self.visible: return
+
+    def draw(self, screen):
+        if not self.visible: return
+
+class SelectionBox(Element):
 
     def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
         super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
@@ -558,7 +575,7 @@ def main():
         print(e.get())
 
     window = Window(fullscreen=True)
-    s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=50, scroll_width=50)
+    s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=50, scroll_width=50, scrollable_window=False)
     f = Frame(window, (600, 600), (400, 400), draggable=True)
     f2 = Frame(f, (0, 0), (300, 300), draggable=True)
     p = ProgressBar(f2, (0,0), (300, 50), 100, interactable=False, reversed_dir=False, starting_value=30)
