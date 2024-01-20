@@ -19,8 +19,24 @@ class Element:
         self.border_colour = border_colour
 
         self.selected = False
+        self.visible = True
 
         self.window.add_element(self)
+
+    def get_position(self):
+        return (self.x + self.window.get_position()[0], self.y + self.window.get_position()[1])
+
+    def show(self):
+        self.visible = True
+
+    def hide(self):
+        self.visible = False
+
+    def set_visibility(self, visible):
+        self.visible = visible
+
+    def toggle_visibility(self):
+        self.visible = not self.visible
 
     def check_event(self, event):
         pass
@@ -43,8 +59,11 @@ class Label(Element):
         if self.text: self.text_height = self.pygame_font.size(self.text)[1]
 
     def draw(self, screen):
-        pygame.draw.rect(screen, self.colour, self.hitbox)
-        pygame.draw.rect(screen, self.border_colour, self.hitbox, self.border_size)
+        if not self.visible: return
+        window_pos = self.window.get_position()
+        draw_rect = (self.hitbox.x + window_pos[0], self.hitbox.y + window_pos[1], self.hitbox.width, self.hitbox.height)
+        pygame.draw.rect(screen, self.colour, draw_rect)
+        pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
         if not self.text: return
         for line, text in enumerate(self.text.split("\n")):
             screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5, self.hitbox.top + 5 + self.text_height * line))
@@ -62,7 +81,11 @@ class Button(Label):
         self.selected = False
 
     def check_event(self, event):
+        if not self.visible: return
         mousex, mousey = pygame.mouse.get_pos()
+        window_pos = self.window.get_position()
+        mousex -= window_pos[0]
+        mousey -= window_pos[1]
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.hitbox.collidepoint(mousex, mousey):
                 if self.function: self.function(*self.function_args, **self.function_kargs)
@@ -78,13 +101,16 @@ class Button(Label):
             self.hovering = False
 
     def draw(self, screen):
+        if not self.visible: return
+
         if not self.on_hover:
             if self.selected: self.colour = self.active_colour
             if not self.selected: self.colour = self.rest_colour
         else:
             if self.hovering: self.colour = self.active_colour
             if not self.hovering: self.colour = self.rest_colour
-        return super().draw(screen)
+
+        super().draw(screen)
     
 class Entry(Element):
 
@@ -135,7 +161,11 @@ class Entry(Element):
             self.current_pos += 1
 
     def check_event(self, event):
+        if not self.visible: return
         mousex, mousey = pygame.mouse.get_pos()
+        window_pos = self.window.get_position()
+        mousex -= window_pos[0]
+        mousey -= window_pos[1]
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.hitbox.collidepoint(mousex, mousey):
                 self.selected = not self.selected
@@ -208,8 +238,9 @@ class Entry(Element):
                     self.add_char_line(key)
 
     def draw_text(self, screen):
+        window_pos = self.window.get_position()
         if len(self.raw_text) == 0 and self.default_text and not self.selected:
-            screen.blit(self.pygame_font.render(self.default_text, True, self.default_text_colour), (self.hitbox.left + 5, self.hitbox.top + 5))
+            screen.blit(self.pygame_font.render(self.default_text, True, self.default_text_colour), (self.hitbox.left + 5 + window_pos[0], self.hitbox.top + 5 + window_pos[1]))
 
         else:
             for line, text in enumerate(self.text):
@@ -218,12 +249,15 @@ class Entry(Element):
                     text = text[:self.current_pos] + self.input_character + text[self.current_pos:]
 
                 if self.hidden: text = "".join(self.hidden for _ in range(len(text)))
-                screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5, self.hitbox.top + 5 + self.text_height * line))
+                screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5 + window_pos[0], self.hitbox.top + 5 + window_pos[1] + self.text_height * line))
 
 
     def draw(self, screen):
-        pygame.draw.rect(screen, self.colour, self.hitbox)
-        pygame.draw.rect(screen, self.border_colour, self.hitbox, self.border_size)
+        if not self.visible: return
+        window_pos = self.window.get_position()
+        draw_rect = (self.hitbox.x + window_pos[0], self.hitbox.y + window_pos[1], self.hitbox.width, self.hitbox.height)
+        pygame.draw.rect(screen, self.colour, draw_rect)
+        pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
         self.draw_text(screen)
 
 class SelectionBox(Element):
@@ -231,17 +265,26 @@ class SelectionBox(Element):
     def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
         super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
 
+    def check_event(self, event):
+        if not self.visible: return
+
+    def draw(self, screen):
+        if not self.visible: return
+
 class ProgressBar(Element):
 
-    def __init__(self, window, position, dimensions, max_value, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), min_value = 0, bar_colour = (0, 255, 0), interactable = False, vertical = False, reversed_dir = False) -> None:
+    def __init__(self, window, position, dimensions, max_value, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), min_value = 0, starting_value = None, bar_colour = (0, 255, 0), interactable = False, vertical = False, reversed_dir = False) -> None:
         super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
         self.min_value = min_value
         self.max_value = max_value
-        self.current_value = min_value
+        self.current_value = starting_value
         self.bar_colour = bar_colour
         self.interactable = interactable
         self.vertical = vertical
         self.reversed_dir = reversed_dir
+        if self.current_value == None: self.current_value = self.min_value
+        if self.current_value > self.max_value: self.current_value = self.max_value
+        if self.current_value < self.min_value: self.current_value = self.min_value
         if self.vertical: self.bar_rect = pygame.Rect(self.x + self.border_size, self.y + self.border_size, self.width - 2*self.border_size, 0)
         else: self.bar_rect = pygame.Rect(self.x + self.border_size, self.y + self.border_size, 0, self.height - 2*self.border_size)
 
@@ -262,8 +305,12 @@ class ProgressBar(Element):
         return (self.current_value, self.get_percentage())
 
     def check_event(self, event):
+        if not self.visible: return
         if self.interactable:
             mousex, mousey = pygame.mouse.get_pos()
+            window_pos = self.window.get_position()
+            mousex -= window_pos[0]
+            mousey -= window_pos[1]
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self.hitbox.collidepoint(mousex, mousey):
                     self.selected = True
@@ -289,13 +336,17 @@ class ProgressBar(Element):
             if self.reversed_dir: self.bar_rect.x = self.width - self.bar_rect.width + self.x - self.border_size
     
     def draw(self, screen):
-        pygame.draw.rect(screen, self.colour, self.hitbox)
-        pygame.draw.rect(screen, self.border_colour, self.hitbox, self.border_size)
-        pygame.draw.rect(screen, self.bar_colour, self.bar_rect)
+        if not self.visible: return
+        window_pos = self.window.get_position()
+        draw_rect = (self.hitbox.x + window_pos[0], self.hitbox.y + window_pos[1], self.hitbox.width, self.hitbox.height)
+        draw_bar_rect = (self.bar_rect.x + window_pos[0], self.bar_rect.y + window_pos[1], self.bar_rect.width, self.bar_rect.height)
+        pygame.draw.rect(screen, self.colour, draw_rect)
+        pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
+        pygame.draw.rect(screen, self.bar_colour, draw_bar_rect)
 
 class ScrollBar(Element):
 
-    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(200, 200, 200), scroll_height = 50, scroll_width = 20, scroll_colour = (100, 100, 100), scroll_border_size = 1, scroll_border_colour = (50, 50, 50)) -> None:
+    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), scroll_height = 50, scroll_width = 20, scroll_colour = (100, 100, 100), scroll_border_size = 1, scroll_border_colour = (50, 50, 50)) -> None:
         super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
         self.scroll_height = scroll_height
         self.scroll_width = scroll_width
@@ -315,10 +366,14 @@ class ScrollBar(Element):
         self.scroll_rect = pygame.Rect(self.x, self.y, self.scroll_width, self.scroll_height)
 
     def draw(self, screen):
-        pygame.draw.rect(screen, self.colour, self.hitbox)
-        pygame.draw.rect(screen, self.border_colour, self.hitbox, self.border_size)
-        pygame.draw.rect(screen, self.scroll_colour, self.scroll_rect)
-        pygame.draw.rect(screen, self.scroll_border_colour, self.scroll_rect, self.scroll_border_size)
+        if not self.visible: return
+        window_pos = self.window.get_position()
+        draw_rect = (self.hitbox.x + window_pos[0], self.hitbox.y + window_pos[1], self.hitbox.width, self.hitbox.height)
+        draw_scroll_rect = (self.scroll_rect.x + window_pos[0], self.scroll_rect.y + window_pos[1], self.scroll_rect.width, self.scroll_rect.height)
+        pygame.draw.rect(screen, self.colour, draw_rect)
+        pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
+        pygame.draw.rect(screen, self.scroll_colour, draw_scroll_rect)
+        pygame.draw.rect(screen, self.scroll_border_colour, draw_scroll_rect, self.scroll_border_size)
 
     def get_y(self):
         return ((self.scroll_y - self.clamp_top) / (self.clamp_bottom - self.clamp_top)) if (self.clamp_bottom - self.clamp_top) > 0 else 0
@@ -330,8 +385,11 @@ class ScrollBar(Element):
         return (self.get_x(), self.get_y())
     
     def check_event(self, event):
+        if not self.visible: return
         mousex, mousey = pygame.mouse.get_pos()
-
+        window_pos = self.window.get_position()
+        mousex -= window_pos[0]
+        mousey -= window_pos[1]
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.scroll_rect.collidepoint(mousex, mousey):
             self.selected = True
             
@@ -358,19 +416,84 @@ class ScrollBar(Element):
 
 class Frame(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
+    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), draggable = False) -> None:
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
+        self.draggable = draggable
+        self.elements = []
+
+    def add_element(self, element):
+        self.elements.append(element)
+
+    def check_event(self, event):
+        if not self.visible: return
+        mousex, mousey = pygame.mouse.get_pos()
+        window_pos = self.window.get_position()
+        mousex -= window_pos[0]
+        mousey -= window_pos[1]
+        isTouchingElement = False
+        if not self.selected:
+            for element in self.elements:
+                if element.visible:
+                    element.check_event(event)
+                    if element.hitbox.collidepoint(mousex - self.x, mousey - self.y):
+                        isTouchingElement = True
+        
+        if self.draggable and not isTouchingElement:
+            if event.type == pygame.MOUSEBUTTONDOWN and self.hitbox.collidepoint(mousex, mousey):
+                self.selected = True
+                self.offset_x = mousex - self.x
+                self.offset_y = mousey - self.y
+
+            if event.type == pygame.MOUSEBUTTONUP and self.selected:
+                self.selected = False
+
+            if self.selected:
+                self.x = mousex - self.offset_x
+                self.y = mousey - self.offset_y
+
+            if self.x > self.window.width - self.width:
+                self.x = self.window.width - self.width
+
+            if self.x < 0:
+                self.x = 0
+
+            if self.y > self.window.height - self.height:
+                self.y = self.window.height - self.height
+
+            if self.y < 0:
+                self.y = 0
+
+            self.hitbox.x = self.x
+            self.hitbox.y = self.y
+
+    def draw(self, screen):
+        if not self.visible: return
+        window_pos = self.window.get_position()
+        draw_rect = (self.hitbox.x + window_pos[0], self.hitbox.y + window_pos[1], self.hitbox.width, self.hitbox.height)
+        pygame.draw.rect(screen, self.colour, draw_rect)
+        pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
+        for element in self.elements:
+            if element.visible:
+                element.draw(screen)
 
 class DropDown(Element):
 
     def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
         super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
 
+    def check_event(self, event):
+        if not self.visible: return
+
+    def draw(self, screen):
+        if not self.visible: return
+
 class Window:
 
-    def __init__(self, width = 0, height = 0, fullscreen = False, colour = (200, 200, 200)) -> None:
+    def __init__(self, width = 0, height = 0, fullscreen = False, colour = (200, 200, 200), fps = 60) -> None:
         self.window = pygame.display.set_mode((width, height), pygame.FULLSCREEN if fullscreen else None)
         self.width, self.height = self.window.get_size()
+        self.x = 0
+        self.y = 0
         self.fullscreen = fullscreen
         self.colour = colour
 
@@ -378,7 +501,13 @@ class Window:
         self.keybinds = {}
         self.elements = []
 
+        self.fps = fps
+        self.clock = pygame.time.Clock()
+
         self.initialise()
+
+    def get_position(self):
+        return (self.x, self.y)
 
     def close(self):
         self.running = False
@@ -398,14 +527,17 @@ class Window:
 
     def send_event(self, event):
         for element in self.elements:
-            element.check_event(event)
+            if element.visible:
+                element.check_event(event)
 
     def draw_elements(self):
         for element in self.elements:
-            element.draw(self.window)
+            if element.visible:
+                element.draw(self.window)
 
     def mainloop(self):
         while self.running:
+            
 
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN:
@@ -417,6 +549,8 @@ class Window:
             self.draw_elements()
             pygame.display.flip()
 
+            self.clock.tick(self.fps)
+
         pygame.quit()
 
 def main():
@@ -425,7 +559,9 @@ def main():
 
     window = Window(fullscreen=True)
     s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=50, scroll_width=50)
-    p = ProgressBar(window, (500, 500), (300, 50), 100, interactable=True)
+    f = Frame(window, (600, 600), (400, 400), draggable=True)
+    f2 = Frame(f, (0, 0), (300, 300), draggable=True)
+    p = ProgressBar(f2, (0,0), (300, 50), 100, interactable=False, reversed_dir=False, starting_value=30)
     b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[p])
     window.mainloop()
 
