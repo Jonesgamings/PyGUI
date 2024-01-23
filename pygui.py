@@ -5,11 +5,12 @@ pygame.display.init()
 
 class Element:
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
+    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour, interactable) -> None:
         self.window = window
         self.x, self.y = position
         self.width, self.height = dimensions
-        self.hitbox = pygame.Rect(self.x, self.y, self.width, self.height)
+        self.hitbox = pygame.Rect(self.x, self.y, self.width, self.height)#
+        self.interactable = interactable
 
         self.colour = colour
         self.rest_colour = colour
@@ -22,6 +23,9 @@ class Element:
         self.visible = True
 
         self.window.add_element(self)
+
+    def collides(self, x, y):
+        return self.hitbox.collidepoint(x, y)
 
     def get_position(self):
         return (self.x + self.window.get_position()[0], self.y + self.window.get_position()[1])
@@ -47,7 +51,7 @@ class Element:
 class Label(Element):
 
     def __init__(self, window, position, dimensions, text = "", text_size = 0, text_colour = (0, 0, 0), bold = False, italic = None, font = None, colour = (250, 250, 250), border_colour = (200, 200, 200), border_size = 2) -> None:
-        super().__init__(window, position, dimensions, colour, colour, border_size, border_colour)
+        super().__init__(window, position, dimensions, colour, colour, border_size, border_colour, False)
         self.text = text
         self.text_size = text_size
         self.text_colour = text_colour
@@ -66,12 +70,13 @@ class Label(Element):
         pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
         if not self.text: return
         for line, text in enumerate(self.text.split("\n")):
-            screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5, self.hitbox.top + 5 + self.text_height * line))
+            screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5 + window_pos[0], self.hitbox.top + 5 + window_pos[1] + self.text_height * line))
 
 class Button(Label):
 
     def __init__(self, window, position, dimensions, text = "", text_size = 32, function = None, function_args = [], function_kargs = {}, text_colour=(0, 0, 0), bold=False, italic=None, font=None, colour=(250, 250, 250), border_colour=(200, 200, 200), border_size=2, active_colour = (150, 150, 150), on_hover = False) -> None:
         super().__init__(window, position, dimensions, text, text_size, text_colour, bold, italic, font, colour, border_colour, border_size)
+        self.interactable = True
         self.function = function
         self.active_colour = active_colour
         self.on_hover = on_hover
@@ -115,7 +120,7 @@ class Button(Label):
 class Entry(Element):
 
     def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(200, 200, 200), default_text = None, text_size = 32, text_colour = (0, 0, 0), bold = False, italic = False, font = None, hidden = None, lines = 1, input_character = "|", restricted = True, tab_length = 4) -> None:
-        super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, True)
         self.default_text = default_text
         self.text_size = text_size
         self.text_colour = text_colour
@@ -288,12 +293,11 @@ class Entry(Element):
 class ProgressBar(Element):
 
     def __init__(self, window, position, dimensions, max_value, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), min_value = 0, starting_value = None, bar_colour = (0, 255, 0), interactable = False, vertical = False, reversed_dir = False) -> None:
-        super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, interactable)
         self.min_value = min_value
         self.max_value = max_value
         self.current_value = starting_value
         self.bar_colour = bar_colour
-        self.interactable = interactable
         self.vertical = vertical
         self.reversed_dir = reversed_dir
         if self.current_value == None: self.current_value = self.min_value
@@ -361,7 +365,7 @@ class ProgressBar(Element):
 class ScrollBar(Element):
 
     def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), scroll_height = 50, scroll_width = 20, scroll_colour = (100, 100, 100), scroll_border_size = 1, scroll_border_colour = (50, 50, 50), scrollable = True, scroll_speed = 0.01, scrollable_window = False) -> None:
-        super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, True)
         self.scroll_height = scroll_height
         self.scroll_width = scroll_width
         self.scroll_colour = scroll_colour
@@ -420,7 +424,7 @@ class ScrollBar(Element):
         window_pos = self.window.get_position()
         mousex -= window_pos[0]
         mousey -= window_pos[1]
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.scroll_rect.collidepoint(mousex, mousey):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.hitbox.collidepoint(mousex, mousey):
             self.selected = True
             
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.selected:
@@ -448,12 +452,21 @@ class ScrollBar(Element):
 class Frame(Element):
 
     def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), draggable = False) -> None:
-        super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, True)
         self.draggable = draggable
         self.elements = []
 
     def add_element(self, element):
         self.elements.append(element)
+
+    def collides(self, x, y):
+        if self.hitbox.collidepoint(x, y):
+            if self.draggable: return True
+            for element in self.elements:
+                if element.collides(x - self.x, y - self.y) and element.interactable:
+                    return True
+                
+        return False
 
     def check_event(self, event):
         if not self.visible: return
@@ -464,9 +477,9 @@ class Frame(Element):
         isTouchingElement = False
         if not self.selected:
             for element in self.elements:
-                if element.visible:
+                if element.visible and element.interactable:
                     element.check_event(event)
-                    if element.hitbox.collidepoint(mousex - self.x, mousey - self.y):
+                    if element.collides(mousex - self.x, mousey - self.y):
                         isTouchingElement = True
         
         if self.draggable and not isTouchingElement:
@@ -510,7 +523,7 @@ class Frame(Element):
 class DropDown(Element):
 
     def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, True)
 
     def check_event(self, event):
         if not self.visible: return
@@ -521,13 +534,18 @@ class DropDown(Element):
 class SelectionBox(Element):
 
     def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour)
+        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, True)
 
     def check_event(self, event):
         if not self.visible: return
 
     def draw(self, screen):
         if not self.visible: return
+
+class ImageBox(Element):
+
+    def __init__(self, window, position, dimensions, colour, border_size, border_colour) -> None:
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, False)
 
 class Window:
 
@@ -568,7 +586,7 @@ class Window:
 
     def send_event(self, event):
         for element in self.elements:
-            if element.visible:
+            if element.visible and element.interactable:
                 element.check_event(event)
 
     def draw_elements(self):
@@ -605,9 +623,10 @@ def main():
     s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=50, scroll_width=50, scrollable_window=False)
     f = Frame(window, (600, 600), (400, 400), draggable=True)
     f2 = Frame(f, (0, 0), (300, 300), draggable=True)
-    #p = ProgressBar(f2, (0,0), (300, 50), 100, interactable=False, reversed_dir=False, starting_value=30)
+    f3 = Frame(f2, (0, 0), (50, 50), draggable=True)
+    p = ProgressBar(f2, (0,100), (300, 50), 100, interactable=True, reversed_dir=False, starting_value=30)
     b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[s])
-    e = Entry(f2, (0, 0), (100, 40))
+    l = Label(f2, (0, 0), (100, 40), text = "HI", text_size=32)
     window.mainloop()
 
 if __name__ == "__main__":
