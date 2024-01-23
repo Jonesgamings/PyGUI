@@ -70,7 +70,7 @@ class Label(Element):
 
 class Button(Label):
 
-    def __init__(self, window, position, dimensions, text = None, text_size = 32, function = None, function_args = [], function_kargs = {}, text_colour=(0, 0, 0), bold=False, italic=None, font=None, colour=(250, 250, 250), border_colour=(200, 200, 200), border_size=2, active_colour = (150, 150, 150), on_hover = False) -> None:
+    def __init__(self, window, position, dimensions, text = "", text_size = 32, function = None, function_args = [], function_kargs = {}, text_colour=(0, 0, 0), bold=False, italic=None, font=None, colour=(250, 250, 250), border_colour=(200, 200, 200), border_size=2, active_colour = (150, 150, 150), on_hover = False) -> None:
         super().__init__(window, position, dimensions, text, text_size, text_colour, bold, italic, font, colour, border_colour, border_size)
         self.function = function
         self.active_colour = active_colour
