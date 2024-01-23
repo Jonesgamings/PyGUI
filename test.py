@@ -3,33 +3,44 @@ from pygui import *
 
 # ... (the UI system code goes here, omitting the Window class and main function for brevity)
 
-class LoginPage:
+class ToDoList:
     def __init__(self):
         pygame.init()
 
         # Create the window
-        self.window = Window(width=400, height=300, fullscreen=False, colour=(255, 255, 255), fps=60)
+        self.window = Window(width=400, height=400, fullscreen=False, colour=(255, 255, 255), fps=60)
 
         # Create UI elements
-        self.username_entry = Entry(self.window, position=(150, 100), dimensions=(200, 30), default_text="Username")
-        self.password_entry = Entry(self.window, position=(150, 150), dimensions=(200, 30), default_text="Password", hidden="*")
-        self.login_button = Button(self.window, position=(200, 200), dimensions=(100, 40), text="Login", function=self.try_login)
+        self.task_entry = Entry(self.window, position=(50, 50), dimensions=(250, 30), default_text="Enter task")
+        self.add_button = Button(self.window, position=(310, 50), dimensions=(70, 30), text="Add", function=self.add_task)
+        self.task_list = Label(self.window, position=(50, 100), dimensions=(300, 200), text="", text_size=16, text_colour=(0, 0, 0))
+        self.clear_button = Button(self.window, position=(50, 320), dimensions=(100, 30), text="Clear Completed", function=self.clear_completed)
 
-        # Add UI elements to the window
-        self.window.add_element(self.username_entry)
-        self.window.add_element(self.password_entry)
-        self.window.add_element(self.login_button)
+        # Task list data
+        self.tasks = []
 
-    def try_login(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-        print(f"Attempting login with username: {username} and password: {password}")
+    def add_task(self):
+        new_task = self.task_entry.get()
+        if new_task:
+            self.tasks.append(new_task)
+            self.update_task_list()
+
+    def clear_completed(self):
+        self.tasks = [task for task in self.tasks if not task.startswith("[Done]")]
+        self.update_task_list()
+
+    def update_task_list(self):
+        task_text = "\n".join(f"[Done] {task}" if task.startswith("[Done]") else task for task in self.tasks)
+        self.task_list.text = task_text
+        self.task_entry.set_visibility(True)
+        self.task_entry.hide()
+        self.task_entry.show()
 
     def run(self):
         # Run the main loop
         self.window.mainloop()
 
-# Run the login page
+# Run the to-do list
 if __name__ == "__main__":
-    login_page = LoginPage()
-    login_page.run()
+    todo_list = ToDoList()
+    todo_list.run()

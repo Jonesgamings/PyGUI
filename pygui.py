@@ -46,7 +46,7 @@ class Element:
     
 class Label(Element):
 
-    def __init__(self, window, position, dimensions, text = None, text_size = 0, text_colour = (0, 0, 0), bold = False, italic = None, font = None, colour = (250, 250, 250), border_colour = (200, 200, 200), border_size = 2) -> None:
+    def __init__(self, window, position, dimensions, text = "", text_size = 0, text_colour = (0, 0, 0), bold = False, italic = None, font = None, colour = (250, 250, 250), border_colour = (200, 200, 200), border_size = 2) -> None:
         super().__init__(window, position, dimensions, colour, colour, border_size, border_colour)
         self.text = text
         self.text_size = text_size
@@ -56,7 +56,7 @@ class Label(Element):
         self.font = font
 
         self.pygame_font = pygame.font.SysFont(self.font, self.text_size, self.bold, self.italic)
-        if self.text: self.text_height = self.pygame_font.size(self.text)[1]
+        self.text_height = self.pygame_font.size(self.text)[1]
 
     def draw(self, screen):
         if not self.visible: return
@@ -70,7 +70,7 @@ class Label(Element):
 
 class Button(Label):
 
-    def __init__(self, window, position, dimensions, text = None, text_size = 0, function = None, function_args = [], function_kargs = {}, text_colour=(0, 0, 0), bold=False, italic=None, font=None, colour=(250, 250, 250), border_colour=(200, 200, 200), border_size=2, active_colour = (150, 150, 150), on_hover = False) -> None:
+    def __init__(self, window, position, dimensions, text = None, text_size = 32, function = None, function_args = [], function_kargs = {}, text_colour=(0, 0, 0), bold=False, italic=None, font=None, colour=(250, 250, 250), border_colour=(200, 200, 200), border_size=2, active_colour = (150, 150, 150), on_hover = False) -> None:
         super().__init__(window, position, dimensions, text, text_size, text_colour, bold, italic, font, colour, border_colour, border_size)
         self.function = function
         self.active_colour = active_colour
@@ -114,7 +114,7 @@ class Button(Label):
     
 class Entry(Element):
 
-    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(200, 200, 200), default_text = None, text_size = 32, text_colour = (0, 0, 0), bold = False, italic = False, font = None, hidden = None, lines = 1, input_character = "|") -> None:
+    def __init__(self, window, position, dimensions, colour=(250, 250, 250), border_size = 2, border_colour=(200, 200, 200), default_text = None, text_size = 32, text_colour = (0, 0, 0), bold = False, italic = False, font = None, hidden = None, lines = 1, input_character = "|", restricted = True, tab_length = 4) -> None:
         super().__init__(window, position, dimensions, colour, None, border_size, border_colour)
         self.default_text = default_text
         self.text_size = text_size
@@ -125,6 +125,10 @@ class Entry(Element):
         self.hidden = hidden
         self.lines = lines
         self.input_character = input_character
+        self.restricted = restricted
+        self.tab_length = tab_length
+
+        self.starting_width = self.width
 
         self.default_text_colour = (200, 200, 200)
 
@@ -144,15 +148,27 @@ class Entry(Element):
             return "\n".join(self.text)
         
     def add_char_line(self, key):
-        if key in []: return
-        if self.pygame_font.size(self.text[self.current_line] + key + self.input_character)[0] > self.width:
-            self.current_line += 1
-            if self.current_line == self.lines: 
-                self.current_line = self.lines - 1
-                self.current_pos = len(self.text[self.current_line])
+        if key in [pygame.K_ESCAPE]: return
+        if self.hidden: text = "".join(self.hidden for _ in range(len(self.text[self.current_line])))
+        else: text = self.text[self.current_line]
+
+        if self.pygame_font.size(text + key + self.input_character)[0] > self.width:
+            if self.restricted:
+                self.current_line += 1
+                if self.current_line == self.lines: 
+                    self.current_line = self.lines - 1
+                    self.current_pos = len(self.text[self.current_line])
+
+                else:
+                    self.add_char_line(key)
 
             else:
-                self.add_char_line(key)
+                self.width += self.pygame_font.size(self.hidden if self.hidden else key)[0]
+                self.hitbox.width = self.width
+
+                self.text[self.current_line] = self.text[self.current_line][:self.current_pos] + key + self.text[self.current_line][self.current_pos:]
+                self.raw_text = self.raw_text[:self.current_pos] + key + self.raw_text[self.current_pos:]
+                self.current_pos += 1
 
         else:
             self.text[self.current_line] = self.text[self.current_line][:self.current_pos] + key + self.text[self.current_line][self.current_pos:]
@@ -192,10 +208,14 @@ class Entry(Element):
                             self.current_pos = len(self.text[self.current_line])
 
                     else:
-                        if self.current_pos > 0:
-                            self.text[self.current_line] = self.text[self.current_line][:self.current_pos - 1] + self.text[self.current_line][self.current_pos:]
-                            self.raw_text = self.raw_text[:self.current_pos - 1] + self.raw_text[self.current_pos:]
-                            self.current_pos -= 1
+                        removed_char = self.text[self.current_line][self.current_pos-1]
+                        self.text[self.current_line] = self.text[self.current_line][:self.current_pos - 1] + self.text[self.current_line][self.current_pos:]
+                        self.raw_text = self.raw_text[:self.current_pos - 1] + self.raw_text[self.current_pos:]
+                        self.current_pos -= 1
+
+                        if not self.restricted and self.width > self.starting_width:
+                            self.width -= self.pygame_font.size(self.hidden if self.hidden else removed_char)[0]
+                            self.hitbox.width = self.width
 
                 elif event.key == pygame.K_UP:
                     self.current_line -= 1
@@ -232,8 +252,13 @@ class Entry(Element):
                         else: 
                             self.current_pos = len(self.text[self.current_line])
 
+                elif event.key == pygame.K_TAB:
+                    for _ in range(self.tab_length):
+                        self.add_char_line(" ")
+
                 else:
                     key = event.unicode
+                    if key == None or key == "": return
                     self.add_char_line(key)
 
     def draw_text(self, screen):
@@ -244,10 +269,11 @@ class Entry(Element):
         else:
             for line, text in enumerate(self.text):
 
+                if self.hidden: text = "".join(self.hidden for _ in range(len(text)))
+
                 if self.current_line == line and self.selected:
                     text = text[:self.current_pos] + self.input_character + text[self.current_pos:]
 
-                if self.hidden: text = "".join(self.hidden for _ in range(len(text)))
                 screen.blit(self.pygame_font.render(text, True, self.text_colour), (self.hitbox.left + 5 + window_pos[0], self.hitbox.top + 5 + window_pos[1] + self.text_height * line))
 
 
