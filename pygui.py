@@ -147,7 +147,6 @@ class Entry(Element):
         if key in []: return
         if self.pygame_font.size(self.text[self.current_line] + key + self.input_character)[0] > self.width:
             self.current_line += 1
-            self.current_pos = len(self.text[self.current_line])
             if self.current_line == self.lines: 
                 self.current_line = self.lines - 1
                 self.current_pos = len(self.text[self.current_line])
@@ -507,7 +506,7 @@ class SelectionBox(Element):
 class Window:
 
     def __init__(self, width = 0, height = 0, fullscreen = False, colour = (200, 200, 200), fps = 60) -> None:
-        self.window = pygame.display.set_mode((width, height), pygame.FULLSCREEN if fullscreen else None)
+        self.window = pygame.display.set_mode((width, height), pygame.FULLSCREEN if fullscreen else pygame.SHOWN)
         self.width, self.height = self.window.get_size()
         self.x = 0
         self.y = 0
@@ -534,7 +533,6 @@ class Window:
 
     def initialise(self):
         if self.fullscreen: self.keybinds[pygame.K_ESCAPE] = [self.close]
-        self.keybinds[pygame.QUIT] = [self.close]
 
     def do_keypress(self, key):
         if key in self.keybinds:
@@ -559,6 +557,9 @@ class Window:
             for event in pygame.event.get():
                 if event.type == pygame.KEYDOWN:
                     self.do_keypress(event.key)
+            
+                if event.type == pygame.QUIT:
+                    self.close()
 
                 self.send_event(event)
 
@@ -578,8 +579,9 @@ def main():
     s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=50, scroll_width=50, scrollable_window=False)
     f = Frame(window, (600, 600), (400, 400), draggable=True)
     f2 = Frame(f, (0, 0), (300, 300), draggable=True)
-    p = ProgressBar(f2, (0,0), (300, 50), 100, interactable=False, reversed_dir=False, starting_value=30)
-    b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[p])
+    #p = ProgressBar(f2, (0,0), (300, 50), 100, interactable=False, reversed_dir=False, starting_value=30)
+    b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[s])
+    e = Entry(f2, (0, 0), (100, 40))
     window.mainloop()
 
 if __name__ == "__main__":
