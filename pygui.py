@@ -520,33 +520,119 @@ class Frame(Element):
             if element.visible:
                 element.draw(screen)
 
-class DropDown(Element):
-
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, True)
-
-    def check_event(self, event):
-        if not self.visible: return
-
-    def draw(self, screen):
-        if not self.visible: return
-
 class SelectionBox(Element):
 
-    def __init__(self, window, position, dimensions, colour, active_colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, active_colour, border_size, border_colour, True)
+    def __init__(self, window, position, dimensions, options, amount_selecatable, colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), text_size = 32, text_colour = (0, 0, 0), bold = False, italic = False, font = None) -> None:
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, True)
+        self.text_size = text_size
+        self.text_colour = text_colour
+        self.bold = bold
+        self.italic = italic
+        self.font = font
+
+        self.options = options
+        self.amount_selecatable = amount_selecatable
 
     def check_event(self, event):
         if not self.visible: return
 
     def draw(self, screen):
         if not self.visible: return
+
+class DropDown(Element):
+
+    #MAYBE ADD SCROLLBAR
+
+    def __init__(self, window, position, dimensions, options, default_option = "Pick", colour=(250, 250, 250), border_size = 2, border_colour=(100, 100, 100), text_size = 32, text_colour = (0, 0, 0), bold = False, italic = False, font = None) -> None:
+        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, True)
+        self.options = options
+        self.option_rects = {}
+        self.default_option = default_option
+        self.current_option = None
+
+        self.text_size = text_size
+        self.text_colour = text_colour
+        self.bold = bold
+        self.italic = italic
+        self.font = font
+
+        self.pygame_font = pygame.font.SysFont(self.font, self.text_size, self.bold, self.italic)
+        self.rest_rect = None
+
+        self.generate_rects()
+
+    def get(self):
+        return self.current_option
+
+    def generate_rects(self):
+        for index, option in enumerate(self.options):
+
+            rect = (self.x, self.y + (index + 1) * self.height, self.width, self.height)
+            self.option_rects[rect] = option
+
+        self.rest_rect = pygame.Rect(self.x, self.y + (len(self.options) + 1) * self.height, self.width, self.height)
+
+    def check_event(self, event):
+        if not self.visible: return
+        mousex, mousey = pygame.mouse.get_pos()
+        window_pos = self.window.get_position()
+        mousex -= window_pos[0]
+        mousey -= window_pos[1]
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.hitbox.collidepoint(mousex, mousey):
+                self.selected = not self.selected
+
+            elif self.selected:
+                for option_rect, option in self.option_rects.items():
+                    rect = pygame.Rect(*option_rect)
+                    if rect.collidepoint(mousex, mousey):
+                        self.current_option = option
+                        self.selected = False
+                        break
+
+                if self.rest_rect.collidepoint(mousex, mousey):
+                    self.current_option = None
+                    self.selected = False
+
+            else:
+                self.selected = False
+
+    def draw(self, screen):
+        if not self.visible: return
+        window_pos = self.window.get_position()
+        draw_rect = (self.hitbox.x + window_pos[0], self.hitbox.y + window_pos[1], self.hitbox.width, self.hitbox.height)
+        pygame.draw.rect(screen, self.colour, draw_rect)
+        pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
+        opt = self.current_option if self.current_option else self.default_option
+        screen.blit(self.pygame_font.render(opt, True, self.text_colour), (draw_rect[0] + 5, draw_rect[1] + 5))
+
+        if self.selected:
+            for option_rect, option in self.option_rects.items():
+                draw_rect = (option_rect[0] + window_pos[0], option_rect[1] + window_pos[1], option_rect[2], option_rect[3])
+                pygame.draw.rect(screen, self.colour, draw_rect)
+                pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
+                screen.blit(self.pygame_font.render(option, True, self.text_colour), (draw_rect[0] + 5, draw_rect[1] + 5))
+
+            draw_rect = (self.rest_rect.x + window_pos[0], self.rest_rect.y + window_pos[1], self.rest_rect.width, self.rest_rect.height)
+            pygame.draw.rect(screen, self.colour, draw_rect)
+            pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
+            screen.blit(self.pygame_font.render("None", True, self.text_colour), (draw_rect[0] + 5, draw_rect[1] + 5))
 
 class ImageBox(Element):
 
-    def __init__(self, window, position, dimensions, colour, border_size, border_colour) -> None:
-        super().__init__(window, position, dimensions, colour, None, border_size, border_colour, False)
+    def __init__(self, window, position, dimensions, image_filename, border_size = 2, border_colour=(100, 100, 100)) -> None:
+        super().__init__(window, position, dimensions, (0, 0, 0), None, border_size, border_colour, False)
+        self.image_filename = image_filename
+        self.image = pygame.image.load(self.image_filename)
+        self.image = pygame.transform.scale(self.image, (self.width - self.border_size, self.height - self.border_size))
 
+    def draw(self, screen):
+        if not self.visible: return
+        window_pos = self.window.get_position()
+        draw_rect = (self.x + window_pos[0], self.y + window_pos[1], self.hitbox.width, self.hitbox.height)
+        pygame.draw.rect(screen, self.border_colour, draw_rect, self.border_size)
+        screen.blit(self.image, draw_rect)
+        
 class Window:
 
     def __init__(self, width = 0, height = 0, fullscreen = False, colour = (200, 200, 200), fps = 60) -> None:
@@ -594,6 +680,25 @@ class Window:
             if element.visible:
                 element.draw(self.window)
 
+    def get_screen(self):
+        return self.window
+
+    def update(self):
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                self.do_keypress(event.key)
+        
+            if event.type == pygame.QUIT:
+                self.close()
+
+            self.send_event(event)
+
+        self.window.fill(self.colour)
+        self.draw_elements()
+        pygame.display.flip()
+        
+        self.clock.tick(self.fps)
+
     def mainloop(self):
         while self.running:
             
@@ -616,17 +721,12 @@ class Window:
         pygame.quit()
 
 def main():
-    def test(e):
-        print(e.get())
 
     window = Window(fullscreen=True)
     s = ScrollBar(window, (0, 0), (50, window.height), scroll_height=50, scroll_width=50, scrollable_window=False)
     f = Frame(window, (600, 600), (400, 400), draggable=True)
-    f2 = Frame(f, (0, 0), (300, 300), draggable=True)
-    f3 = Frame(f2, (0, 0), (50, 50), draggable=True)
-    p = ProgressBar(f2, (0,100), (300, 50), 100, interactable=True, reversed_dir=False, starting_value=30)
-    b = Button(window, (300, 300), (50, 50), border_colour=(100, 100, 100), on_hover=True, function=test, function_args=[s])
-    l = Label(f2, (0, 0), (100, 40), text = "HI", text_size=32)
+    I = ImageBox(f, (0, 50), (400, 350), "test.jpg")
+    opt = DropDown(f, (0, 0), (200, 50), ["red", "green", "blue"])
     window.mainloop()
 
 if __name__ == "__main__":
